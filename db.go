@@ -70,14 +70,6 @@ type TableIndex struct {
 	NoneUnique  uint64
 }
 
-func ToRowMap(cols []any, columns []TableColumn) map[string]any {
-	_cols := map[string]any{}
-	for i, col := range columns {
-		_cols[col.Name] = cols[i]
-	}
-	return _cols
-}
-
 func IsColEmpty(colType int, val any) bool {
 	if val == nil {
 		return true
