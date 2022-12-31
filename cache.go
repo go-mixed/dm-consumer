@@ -9,7 +9,7 @@ type KV struct {
 
 type KVs []*KV
 
-type ICache interface {
+type IKV interface {
 	// Get 查询key的值, 并尝试将其JSON值导出到actual 如果无需导出, actual 传入nil
 	Get(key string, actual any) ([]byte, error)
 	// MGet 查询多个keys, 返回所有符合要求K/V, 并尝试将JSON数据导出到actual 如果无需导出, actual 传入nil
