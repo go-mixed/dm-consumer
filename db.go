@@ -79,9 +79,8 @@ func IsColEmpty(colType int, val any) bool {
 	switch colType {
 	case TYPE_MEDIUM_INT, TYPE_FLOAT, TYPE_NUMBER, TYPE_DECIMAL:
 		return val == 0
-	case TYPE_DATETIME, TYPE_DATE, TYPE_TIME, TYPE_TIMESTAMP:
-		return val == ""
-	case TYPE_STRING, TYPE_ENUM, TYPE_SET, TYPE_BINARY, TYPE_BIT:
+	case TYPE_DATETIME, TYPE_DATE, TYPE_TIME, TYPE_TIMESTAMP,
+		TYPE_STRING, TYPE_ENUM, TYPE_SET, TYPE_BINARY, TYPE_BIT:
 		_v, ok := val.(string)
 		if ok {
 			return _v == ""
@@ -95,25 +94,28 @@ func IsColEmpty(colType int, val any) bool {
 	return false
 }
 
-func IsColValueEqual(colType int, v1, v2 any) bool {
+func IsColValueEqual(colType int, isUnsigned bool, v1, v2 any) bool {
+	if v1 == nil && v2 == nil {
+		return true
+	} else if (v1 != nil && v2 == nil) || (v1 == nil && v2 != nil) {
+		return false
+	}
+
 	same := true
 	switch colType {
-	case TYPE_MEDIUM_INT, TYPE_FLOAT, TYPE_NUMBER, TYPE_DECIMAL:
-		same = v1 == v2
-	case TYPE_DATETIME, TYPE_DATE, TYPE_TIME, TYPE_TIMESTAMP:
-		same = v1 == v2
-	case TYPE_STRING, TYPE_ENUM, TYPE_SET, TYPE_BINARY, TYPE_BIT:
-		_, ok1 := v1.(string)
-		_, ok2 := v2.(string)
-		if v1 == nil && v2 == nil {
-			same = true
-		} else if (v1 == nil && v2 != nil) || (v1 != nil && v2 == nil) {
-			same = false
-		} else if ok1 || ok2 {
-			same = v1 == v2
+	case TYPE_MEDIUM_INT, TYPE_NUMBER:
+		if isUnsigned {
+			same = conv.AnyToUint64(v1) == conv.AnyToUint64(v2)
 		} else {
-			same = bytes.Compare(v1.([]byte), v2.([]byte)) != 0
+			same = conv.AnyToInt64(v1) == conv.AnyToInt64(v2)
 		}
+	case TYPE_FLOAT, TYPE_DECIMAL:
+		same = conv.AnyToFloat64(v1) == conv.AnyToFloat64(v2)
+	case TYPE_DATETIME, TYPE_DATE, TYPE_TIME, TYPE_TIMESTAMP,
+		TYPE_STRING, TYPE_ENUM, TYPE_SET:
+		same = conv.AnyToString(v1) == conv.AnyToString(v1)
+	case TYPE_BINARY, TYPE_BIT:
+		same = bytes.Compare(conv.AnyToBytes(v1), conv.AnyToBytes(v2)) != 0
 	case TYPE_POINT:
 		// Todo
 		same = true
@@ -271,10 +273,10 @@ func (e *RowEvent) PreviousEqual(colName string, val any) bool {
 
 func (e *RowEvent) equal(fn func(colName string) (any, bool), colName string, v2 any) bool {
 	col := e.GetColumn(colName)
-	if col != nil { // 键名不存在
+	if col == nil { // 键名不存在
 		return false
 	}
 
 	v1, _ := fn(colName)
-	return IsColValueEqual(col.Type, v1, v2)
+	return IsColValueEqual(col.Type, col.IsUnsigned, v1, v2)
 }

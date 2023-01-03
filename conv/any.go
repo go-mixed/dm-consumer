@@ -182,3 +182,32 @@ func AnyToString(val any) string {
 
 	return s
 }
+
+func AnyToBytes(val any) []byte {
+	if val == nil {
+		return nil
+	}
+	var s []byte
+	switch val.(type) {
+	case bool:
+		if val.(bool) {
+			s = []byte("true")
+		} else {
+			s = []byte("false")
+		}
+	case int64, int, uint16, int8, int16, int32:
+		s = []byte(I64toa(AnyToInt64(val)))
+	case uint64, uint, uint8, uint32:
+		s = []byte(U64toa(AnyToUint64(val)))
+	case float32, float64:
+		s = []byte(Ftoa(AnyToFloat64(val)))
+	case string:
+		s = []byte(val.(string))
+	case []byte:
+		s = val.([]byte)
+	default:
+
+	}
+
+	return s
+}
