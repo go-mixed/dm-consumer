@@ -8,12 +8,14 @@ import (
 )
 
 type RowEvent struct {
-	ID       uint64
-	Schema   string
-	Table    string
-	Alias    string
-	OldRow   map[string]any
-	NewRow   map[string]any
+	ID     uint64
+	Schema string
+	Table  string
+	Alias  string
+	// the row before update
+	PreviousRow map[string]any
+	// row for inserted, updated, before delete
+	Row      map[string]any
 	DiffCols []string
 	Action   string
 
@@ -131,12 +133,12 @@ func (t *Table) GetColumn(colName string) *TableColumn {
 }
 
 func (e *RowEvent) IsColModified(colName string) bool {
-	if e.Action == "insert" {
-		_, ok := e.NewRow[colName]
-		return ok
-	} else if e.Action == "delete" {
-		_, ok := e.OldRow[colName]
-		return ok
+	if _, ok := e.Row[colName]; !ok { // invalid colum name
+		return false
+	}
+
+	if e.Action == "insert" || e.Action == "update" {
+		return true
 	}
 
 	for _, v := range e.DiffCols {
@@ -150,6 +152,10 @@ func (e *RowEvent) IsColModified(colName string) bool {
 func (e *RowEvent) GetTable() *Table {
 	if e.table != nil {
 		return e.table
+	}
+
+	if GetTableFn == nil {
+		return nil
 	}
 
 	e.table = GetTableFn(e.Alias)
@@ -172,12 +178,8 @@ func (e *RowEvent) IsNil(colName string) bool {
 	return e.isNil(e.Value2, colName)
 }
 
-func (e *RowEvent) IsNewNil(colName string) bool {
-	return e.isNil(e.NewValue2, colName)
-}
-
-func (e *RowEvent) IsOldNil(colName string) bool {
-	return e.isNil(e.OldValue2, colName)
+func (e *RowEvent) IsPreviousNil(colName string) bool {
+	return e.isNil(e.PreviousValue2, colName)
 }
 
 func (e *RowEvent) isNil(fn func(colName string) (any, bool), colName string) bool {
@@ -192,12 +194,8 @@ func (e *RowEvent) IsEmpty(colName string) bool {
 	return e.isEmpty(e.Value2, colName)
 }
 
-func (e *RowEvent) IsNewEmpty(colName string) bool {
-	return e.isEmpty(e.NewValue2, colName)
-}
-
-func (e *RowEvent) IsOldEmpty(colName string) bool {
-	return e.isEmpty(e.OldValue2, colName)
+func (e *RowEvent) IsPreviousEmpty(colName string) bool {
+	return e.isEmpty(e.PreviousValue2, colName)
 }
 
 func (e *RowEvent) isEmpty(fn func(colName string) (any, bool), colName string) bool {
@@ -210,27 +208,12 @@ func (e *RowEvent) isEmpty(fn func(colName string) (any, bool), colName string) 
 	return IsColEmpty(col.Type, val)
 }
 
-func (e *RowEvent) Row() map[string]any {
-	if e.Action == "delete" {
-		return e.OldRow
-	}
-	return e.NewRow
-}
-
 func (e *RowEvent) SetValue(colName string, val any) {
-	if e.Action == "delete" {
-		e.SetOldValue(colName, val)
-	} else {
-		e.SetNewValue(colName, val)
-	}
+	e.Row[colName] = val
 }
 
-func (e *RowEvent) SetNewValue(colName string, val any) {
-	e.NewRow[colName] = val
-}
-
-func (e *RowEvent) SetOldValue(colName string, val any) {
-	e.OldRow[colName] = val
+func (e *RowEvent) SetPreviousValue(colName string, val any) {
+	e.PreviousRow[colName] = val
 }
 
 func (e *RowEvent) SetValueByList(colName string, ls []any, val any) {
@@ -259,36 +242,22 @@ func (e *RowEvent) SetValueAsDecodeJson(colName string, val any) {
 }
 
 func (e *RowEvent) Value(colName string) any {
-	if e.Action == "delete" {
-		return e.OldValue(colName)
-	}
-	return e.NewValue(colName)
-}
-
-func (e *RowEvent) OldValue(colName string) any {
-	val, _ := e.OldValue2(colName)
+	val, _ := e.Value2(colName)
 	return val
 }
 
-func (e *RowEvent) NewValue(colName string) any {
-	val, _ := e.NewValue2(colName)
+func (e *RowEvent) PreviousValue(colName string) any {
+	val, _ := e.PreviousValue2(colName)
 	return val
 }
 
 func (e *RowEvent) Value2(colName string) (any, bool) {
-	if e.Action == "delete" {
-		return e.OldValue2(colName)
-	}
-	return e.NewValue2(colName)
-}
-
-func (e *RowEvent) OldValue2(colName string) (any, bool) {
-	val, ok := e.OldRow[colName]
+	val, ok := e.Row[colName]
 	return val, ok
 }
 
-func (e *RowEvent) NewValue2(colName string) (any, bool) {
-	val, ok := e.NewRow[colName]
+func (e *RowEvent) PreviousValue2(colName string) (any, bool) {
+	val, ok := e.PreviousRow[colName]
 	return val, ok
 }
 
@@ -296,12 +265,8 @@ func (e *RowEvent) Equal(colName string, val any) bool {
 	return e.equal(e.Value2, colName, val)
 }
 
-func (e *RowEvent) OldEqual(colName string, val any) bool {
-	return e.equal(e.OldValue2, colName, val)
-}
-
-func (e *RowEvent) NewEqual(colName string, val any) bool {
-	return e.equal(e.NewValue2, colName, val)
+func (e *RowEvent) PreviousEqual(colName string, val any) bool {
+	return e.equal(e.PreviousValue2, colName, val)
 }
 
 func (e *RowEvent) equal(fn func(colName string) (any, bool), colName string, v2 any) bool {
