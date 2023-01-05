@@ -59,4 +59,7 @@ type IKV interface {
 	Set(key string, val any, expiration time.Duration) error
 	SetNoExpiration(key string, val any) error
 	Del(key string) error
+
+	// Batch 批量操作
+	Batch(callback func(client IKV) error) error
 }
