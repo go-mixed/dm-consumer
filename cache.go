@@ -61,5 +61,7 @@ type IKV interface {
 	Del(key string) error
 
 	// Batch 批量操作
-	Batch(callback func(client IKV) error) error
+	Batch(callback KVBatchFunc) error
 }
+
+type KVBatchFunc func(client IKV) error
