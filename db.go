@@ -8,7 +8,7 @@ import (
 )
 
 type RowEvent struct {
-	ID     uint64
+	ID     int64
 	Schema string
 	Table  string
 	Alias  string
@@ -80,7 +80,7 @@ func IsColEmpty(colType int, val any) bool {
 	case TYPE_MEDIUM_INT, TYPE_FLOAT, TYPE_NUMBER, TYPE_DECIMAL:
 		return val == 0
 	case TYPE_DATETIME, TYPE_DATE, TYPE_TIME, TYPE_TIMESTAMP,
-		TYPE_STRING, TYPE_ENUM, TYPE_SET, TYPE_BINARY, TYPE_BIT:
+		TYPE_STRING, TYPE_ENUM, TYPE_SET, TYPE_BINARY, TYPE_BIT, TYPE_JSON:
 		_v, ok := val.(string)
 		if ok {
 			return _v == ""
@@ -112,7 +112,7 @@ func IsColValueEqual(colType int, isUnsigned bool, v1, v2 any) bool {
 	case TYPE_FLOAT, TYPE_DECIMAL:
 		same = conv.AnyToFloat64(v1) == conv.AnyToFloat64(v2)
 	case TYPE_DATETIME, TYPE_DATE, TYPE_TIME, TYPE_TIMESTAMP,
-		TYPE_STRING, TYPE_ENUM, TYPE_SET:
+		TYPE_STRING, TYPE_ENUM, TYPE_SET, TYPE_JSON:
 		same = conv.AnyToString(v1) == conv.AnyToString(v1)
 	case TYPE_BINARY, TYPE_BIT:
 		same = bytes.Compare(conv.AnyToBytes(v1), conv.AnyToBytes(v2)) != 0
